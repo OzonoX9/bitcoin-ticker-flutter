@@ -1,3 +1,4 @@
+import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'coin_data.dart';
 import 'package:flutter/cupertino.dart';
@@ -9,24 +10,7 @@ class PriceScreen extends StatefulWidget {
 }
 
 class _PriceScreenState extends State<PriceScreen> {
-  CoinData coinData = CoinData();
-  double rate = 0;
-
-  @override
-  void initState() {
-    super.initState();
-
-    getData();
-  }
-
-  void getData() async {
-    var coinRate = await coinData.getCoinData();
-    setState(() {
-      rate = coinRate['rate'];
-    });
-  }
-
-  String selectedCurrency = 'USD';
+  String selectedCurrency = 'AUD';
 
   DropdownButton<String> androidDropdown() {
     List<DropdownMenuItem<String>> dropdownItems = [];
@@ -44,6 +28,7 @@ class _PriceScreenState extends State<PriceScreen> {
       onChanged: (value) {
         setState(() {
           selectedCurrency = value!;
+          getData();
         });
       },
     );
@@ -59,10 +44,37 @@ class _PriceScreenState extends State<PriceScreen> {
     return CupertinoPicker(
       itemExtent: 32.0,
       onSelectedItemChanged: (selectedIndex) {
-        print(selectedIndex);
+        setState(() {
+          selectedCurrency = currenciesList[selectedIndex];
+          EasyDebounce.debounce(
+              'my-debouncer', // <-- An ID for this particular debouncer
+              Duration(milliseconds: 500), // <-- The debounce duration
+              () => getData() // <-- The target method
+              );
+          //getData();
+        });
       },
       children: pickerItems,
     );
+  }
+
+  String bitcoinValue = '?';
+
+  @override
+  void initState() {
+    super.initState();
+    getData();
+  }
+
+  void getData() async {
+    try {
+      var data = await CoinData().getCoinData(selectedCurrency);
+      setState(() {
+        bitcoinValue = data;
+      });
+    } catch (e) {
+      print(e);
+    }
   }
 
   @override
@@ -87,7 +99,7 @@ class _PriceScreenState extends State<PriceScreen> {
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 28.0),
                 child: Text(
-                  '1 BTC = ${rate.toStringAsFixed(0)} USD',
+                  '1 BTC = $bitcoinValue $selectedCurrency',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 20.0,
